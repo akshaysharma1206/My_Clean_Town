@@ -47,6 +47,45 @@ function hideLoading() {
     }, 300);
 }
 
+// Read an image file and convert it to a Base64 string
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// Automatically detect user's location
+function detectLocation() {
+    if (!navigator.geolocation) {
+        showNotification('Geolocation is not supported by your browser.', 'error');
+        return;
+    }
+
+    showLoading();
+    showNotification('Detecting your location...');
+
+    function success(position) {
+        const latitude  = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const locationInput = document.getElementById('location');
+        // A real app would use a reverse geocoding API here.
+        // For this demo, we'll just use the coordinates.
+        locationInput.value = `Lat: ${latitude.toFixed(5)}, Lon: ${longitude.toFixed(5)}`;
+        hideLoading();
+        showNotification('Location detected successfully!', 'success');
+    }
+
+    function error() {
+        hideLoading();
+        showNotification('Unable to retrieve your location. Please enter it manually.', 'error');
+    }
+
+    navigator.geolocation.getCurrentPosition(success, error);
+}
+
 // Check authentication
 function checkAuth() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -198,10 +237,12 @@ function createIssueElement(issue) {
     ` : '';
     
     const statusInfo = issue.status === 'Resolved' ? `<p class="status-info"><i class="fas fa-check-circle"></i> This issue has been resolved!</p>` : `<p class="status-info"><i class="fas fa-clock"></i> Currently ${issue.status.toLowerCase()}</p>`;
+    
+    const hasImageIndicator = issue.imageDataURL ? `<i class="fas fa-camera issue-meta-icon" title="Image attached"></i>` : '';
 
     issueElement.innerHTML = `
         <div class="issue-header">
-            <h3>${issue.title}</h3>
+            <h3>${issue.title} ${hasImageIndicator}</h3>
             ${urgencyBadge}
         </div>
         <p class="issue-meta">
@@ -247,6 +288,15 @@ function viewIssueDetails(issueId) {
     document.getElementById('modalStatus').innerHTML = `<i class="fas fa-info-circle"></i> Status: ${issue.status}`;
     document.getElementById('modalDescription').textContent = issue.description;
 
+    const modalImageContainer = document.getElementById('modalImageContainer');
+    const modalImage = document.getElementById('modalImage');
+    if (issue.imageDataURL) {
+        modalImage.src = issue.imageDataURL;
+        modalImageContainer.style.display = 'block';
+    } else {
+        modalImageContainer.style.display = 'none';
+    }
+
     modal.classList.add('show');
 }
 
@@ -263,7 +313,6 @@ function deleteIssue(issueId) {
     
     showNotification('Issue deleted successfully!', 'success');
     
-    // Refresh the view
     loadIssues();
     loadStatistics();
 }
@@ -277,7 +326,7 @@ function closeModal(modalId) {
 }
 
 // Handle issue report submission
-function handleIssueSubmit(event) {
+async function handleIssueSubmit(event) {
     event.preventDefault();
     showLoading();
 
@@ -293,11 +342,29 @@ function handleIssueSubmit(event) {
     const location = document.getElementById('location').value;
     const urgency = document.getElementById('urgency').value;
     const description = document.getElementById('description').value;
+    const imageFile = document.getElementById('issueImage').files[0];
 
     if (!title || !category || !location || !description) {
         hideLoading();
         showNotification('Please fill in all required fields', 'error');
         return;
+    }
+
+    let imageDataURL = null;
+    if (imageFile) {
+        if (imageFile.size > 2 * 1024 * 1024) { // 2MB limit
+            hideLoading();
+            showNotification('Image is too large. Max size is 2MB.', 'error');
+            return;
+        }
+        try {
+            imageDataURL = await readFileAsDataURL(imageFile);
+        } catch (error) {
+            hideLoading();
+            showNotification('Failed to process image file.', 'error');
+            console.error('Image processing error:', error);
+            return;
+        }
     }
 
     const newIssue = {
@@ -307,6 +374,7 @@ function handleIssueSubmit(event) {
         location,
         urgency,
         description,
+        imageDataURL,
         status: 'Reported',
         reportedBy: currentUser.email,
         timestamp: new Date().toISOString()
@@ -319,6 +387,7 @@ function handleIssueSubmit(event) {
     hideLoading();
     showNotification('Issue reported successfully!');
     document.getElementById('issueForm').reset();
+    document.getElementById('imagePreview').innerHTML = '';
     
     loadStatistics();
     loadIssues();
@@ -386,6 +455,29 @@ function setupEventListeners() {
     const logoutBtn = document.querySelector('.logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
+    }
+
+    const detectLocationBtn = document.getElementById('detectLocationBtn');
+    if (detectLocationBtn) {
+        detectLocationBtn.addEventListener('click', detectLocation);
+    }
+
+    const issueImageInput = document.getElementById('issueImage');
+    if (issueImageInput) {
+        issueImageInput.addEventListener('change', function() {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    previewContainer.appendChild(img);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
     }
 
     document.querySelectorAll('.nav-menu a').forEach(link => {
