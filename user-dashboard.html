@@ -163,12 +163,25 @@
                         <textarea id="description" name="description" placeholder="Please provide detailed information about the issue..." rows="4" required></textarea>
                     </div>
 
+                    <div class="form-group">
+                        <label for="issueImage" class="file-input-label">
+                            <i class="fas fa-camera"></i> Add an Image
+                        </label>
+                        <input type="file" id="issueImage" name="issueImage" accept="image/*" class="custom-file-input">
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="location">
-                                <i class="fas fa-map-marker-alt"></i> Location
+                                <i class="fas fa-map-marker-alt"></i> Location *
                             </label>
-                            <input type="text" id="location" name="location" placeholder="Street name, landmark, etc.">
+                            <div class="location-input-group">
+                                <input type="text" id="location" name="location" placeholder="Street name, landmark, etc." required>
+                                <button type="button" id="detectLocationBtn" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-crosshairs"></i> Detect
+                                </button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="urgency">
@@ -233,6 +246,9 @@
             </div>
             <div class="modal-body">
                 <h3 id="modalTitle"></h3>
+                <div id="modalImageContainer" class="modal-image-container" style="display: none;">
+                    <img id="modalImage" src="" alt="Issue Image">
+                </div>
                 <p id="modalCategory" class="modal-meta"></p>
                 <p id="modalLocation" class="modal-meta"></p>
                 <p id="modalUrgency" class="modal-meta"></p>
