@@ -9,7 +9,7 @@ function initializeStorage() {
     if (!localStorage.getItem('adminAccount')) {
         const adminAccount = {
             email: 'admin@civicconnect.com',
-            password: 'admin123',
+            password: 'Admin@123',
             name: 'System Administrator'
         };
         localStorage.setItem('adminAccount', JSON.stringify(adminAccount));
